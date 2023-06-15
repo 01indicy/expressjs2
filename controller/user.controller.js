@@ -1,5 +1,5 @@
 const { User } = require('../models/')
-const {where} = require("sequelize");
+const bcrypt = require("bcrypt");
 
 exports.getAllUser = async (req,res) => {
     await User.findAll().then(userList => res.status(200).json({userList})).catch(e => {
@@ -10,12 +10,13 @@ exports.getAllUser = async (req,res) => {
 
 exports.createUser = async (req,res) => {
     try {
-        const { name, email } = req.body
-        if(!name || !email) return res.status(400).json({ error: 'Name and email are required fields' });
+        const { name, email, password } = req.body
+        if(!name || !email || !password) return res.status(400).json({ error: 'Name, password and email are required fields' });
 
         await User.findOne({where:{email: email}}).then(async findResponse => {
             if (findResponse === null) {
-                await User.create({name: name, email: email}).then((response) => {
+                const encryptedPassword = await bcrypt.hash(password, 10)
+                await User.create({name: name, email: email,password:encryptedPassword}).then((response) => {
                     res.status(201).json({response})
                 }).catch((error) => res.status(500).json(error.message))
             }else{
@@ -46,7 +47,7 @@ exports.getSingleUser = async (req,res) => {
 
 exports.updateUser = async (req,res) => {
     try {
-        const {name,email,id} = req.body
+        const { name, email, id} = req.body
         if(!name || !email || !id) return res.status(400).json({ error: 'Name, email or id are required fields' });
 
         await User.findOne({where: {id: id}}).then(async userDetails => {

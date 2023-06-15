@@ -2,7 +2,9 @@ const express = require('express')
 const morgan = require('morgan')
 const bodyParser = require('body-parser')
 const service = express()
-const routes = require('./routes/routes')
+const userRoutes = require('./routes/user.routes')
+const authRoutes = require('./routes/auth.routes')
+
 require('dotenv').config()
 
 service.use(morgan('dev'))
@@ -15,5 +17,6 @@ service.use((err, req, res, next) => {
         res.status(500).json({ error: 'Internal Server Error' }); // Respond with a generic error for other types of errors
     }
 });
-service.use('/api',routes)
+service.use('/api',userRoutes)
+service.use('/api/auth',authRoutes)
 service.listen(process.env.PORT,() => console.log(`service is running on port ${process.env.PORT}`))
