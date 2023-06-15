@@ -1,4 +1,4 @@
-const { User } = require('../models/')
+const { sequelize,User } = require('../models/')
 const bcrypt = require("bcrypt");
 
 exports.getAllUser = async (req,res) => {
@@ -9,24 +9,28 @@ exports.getAllUser = async (req,res) => {
 }
 
 exports.createUser = async (req,res) => {
-    try {
-        const { name, email, password } = req.body
-        if(!name || !email || !password) return res.status(400).json({ error: 'Name, password and email are required fields' });
+    sequelize.transaction(async (transaction) => {
+        try {
+            const {name, email, password} = req.body
+            if (!name || !email || !password) return res.status(400).json({error: 'Name, password and email are required fields'});
 
-        await User.findOne({where:{email: email}}).then(async findResponse => {
-            if (findResponse === null) {
-                const encryptedPassword = await bcrypt.hash(password, 10)
-                await User.create({name: name, email: email,password:encryptedPassword}).then((response) => {
-                    res.status(201).json({response})
-                }).catch((error) => res.status(500).json(error.message))
-            }else{
-                res.status(409).json({error:"error",msg:"user already exists"})
-            }
-        })
-    }catch (e) {
-        console.log(e.message)
-        res.status(500).json({error:'Internal server error'})
-    }
+            await sequelize.query('BEGIN', { transaction });
+            await User.findOne({where: {email: email}}).then(async findResponse => {
+                if (findResponse === null) {
+                    const encryptedPassword = await bcrypt.hash(password, 10)
+                    await User.create({name: name, email: email, password: encryptedPassword}).then((response) => {
+                        res.status(201).json({response})
+                    }).catch((error) => res.status(500).json(error.message))
+                } else {
+                    res.status(409).json({error: "error", msg: "user already exists"})
+                }
+            },{transaction})
+            await sequelize.query('COMMIT', { transaction });
+        } catch (e) {
+            console.log(e.message)
+            await sequelize.query('ROLLBACK', { transaction });
+        }
+    })
 }
 
 exports.getSingleUser = async (req,res) => {
